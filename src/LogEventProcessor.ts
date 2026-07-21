@@ -169,11 +169,17 @@ export default class LogEventProcessor {
     if (Object.keys(this._nonExposedChecks).length === 0) {
       return;
     }
-    const event = new LogEvent(INTERNAL_EVENT_PREFIX + 'non_exposed_checks');
-    event.setMetadata({ checks: { ...this._nonExposedChecks } });
-    this.log(event);
-
+    const checks = this._nonExposedChecks;
     this._nonExposedChecks = {};
+    if (this.options.localMode) {
+      return;
+    }
+    const event = new LogEvent(INTERNAL_EVENT_PREFIX + 'non_exposed_checks');
+    event.setMetadata({ checks });
+    // Push directly instead of log() so the calling flush stays the sole
+    // poster; log() would fire an unawaited re-entrant flush at the buffer
+    // limit
+    this.queue.push(event.toObject());
   }
 
   public logGateExposure(
